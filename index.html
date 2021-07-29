@@ -8,7 +8,6 @@
 <label>Miner:</label><input id="miner"><br><br>
 <label>Nonce:</label><input id="nonce"><br><br>
 <button id="send" onclick=send()>Send</button><br><br>
-
 <h2 id="response"></h2>
 
 <script>
@@ -47,12 +46,11 @@
         expireSeconds: 60
       })
 
-      document.getElementById('response').append(JSON.stringify(result))
-
+      document.getElementById('response').value = JSON.stringify(result)
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
     catch (e) {
-        document.getElementById('response').append(e.message)
+        document.getElementById('response').value = e.message
     }
   }
 

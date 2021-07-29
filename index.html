@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<script src='waxjs.js'></script>
+<title>Alien Worlds Farm</title>
+<body>
+
+<button id="login" onclick=login()>Login</button><br><br>
+<label>Miner:</label><input id="miner"><br><br>
+<label>Nonce:</label><input id="nonce"><br><br>
+<button id="send" onclick=send()>Send</button><br><br>
+
+<script>
+  const wax = new waxjs.WaxJS({
+    rpcEndpoint: 'https://wax.greymass.com'
+  })
+
+  async function login() {
+    try {
+      const userAccount = await wax.login()
+      document.getElementById('miner').value = userAccount
+    }
+    catch {}
+  }
+
+  async function send() {
+    const miner = document.getElementById('miner').value
+    const nonce = document.getElementById('nonce').value
+
+    try {
+      const result = await wax.api.transact({
+        actions: [{
+          account: 'm.federation',
+          name: 'mine',
+          authorization: [{
+            actor: wax.userAccount,
+            permission: 'active',
+          }],
+          data: {
+            miner: miner,
+            nonce: nonce
+          },
+        }]
+      }, {
+        blocksBehind: 3,
+        expireSeconds: 60
+      })
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+    catch {}
+  }
+
+  // set a random value to the initial nonce value
+  document.getElementById('nonce').value = '0000000000000001'
+
+</script>
+</body>
+</html>

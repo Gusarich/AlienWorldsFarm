@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <script src='waxjs.js'></script>
+<script src='bundle.js'></script>
 <title>Alien Worlds Farm</title>
 <body>
 
 <button id="login" onclick=login()>Login</button><br><br>
 <label>Miner:</label><input id="miner"><br><br>
-<label>Nonce:</label><input id="nonce"><br><br>
-<button id="send" onclick=send()>Send</button><br><br>
+<button id="mine" onclick=mine()>Mine</button><br><br>
 <h2 id="response"></h2>
 
 <script>
@@ -15,17 +15,94 @@
     rpcEndpoint: 'https://wax.greymass.com'
   })
 
+
+  const nameToArray = (name) => {
+      const sb = new Serialize.SerialBuffer({
+          textEncoder: new TextEncoder,
+          textDecoder: new TextDecoder
+      });
+
+      sb.pushName(name);
+
+      return sb.array;
+  }
+  const toHex = (arr) => {
+      return Buffer.from(arr).toString('hex')
+  }
+  const fromHex = hex => {
+      return Uint8Array.from(Buffer.from(hex, 'hex'))
+  }
+  const nextArr = (arr) => {
+      let i = 7;
+      while (arr[i] == 255) {
+          arr[i] = 0
+          i--
+      }
+      arr[i]++
+  }
+
+  async function lastMineTx (account) {
+      const state_res = await wax.rpc.get_table_rows({
+          code: 'm.federation',
+          scope: 'm.federation',
+          table: 'miners',
+          lower_bound: account,
+          upper_bound: account
+      })
+
+      let last_mine_tx = '0000000000000000000000000000000000000000000000000000000000000000';
+      if (state_res.rows.length){
+          last_mine_tx = state_res.rows[0].last_mine_tx;
+      }
+
+      return last_mine_tx;
+  }
+
+  async function findNonce (account) {
+      let last_mine_tx = (await lastMineTx(account)).slice(0, 16)
+      let last_mine_arr = fromHex(last_mine_tx)
+      account = nameToArray(account).slice(0, 8)
+
+      let good = false, hash, hex_digest, last
+      let nonce = new Uint8Array([171, 192, 0, 0, 0, 0, 0, 0])
+
+      let combined = new Uint8Array(24)
+      combined.set(account)
+      combined.set(last_mine_arr, 8)
+
+      while (!good) {
+          nextArr(nonce)
+          combined.set(nonce, 16)
+          hash = createHash('sha256')
+          hash.update(combined)
+          hex_digest = hash.digest('hex')
+          good = hex_digest.substr(0, 4) === '0000'
+          if (good){
+              last = parseInt(hex_digest.substr(4, 1), 16)
+              good &= (last == 0)
+          }
+      }
+
+      return toHex(nonce)
+  }
+
   async function login() {
     try {
       const userAccount = await wax.login()
-      document.getElementById('miner').innerHTML = userAccount
+      document.getElementById('miner').value = userAccount
     }
     catch {}
   }
 
-  async function send() {
+  async function mine() {
+    document.getElementById('response').innerHTML = 'Mining has started<br>Please wait a few seconds...'
+
     const miner = document.getElementById('miner').value
-    const nonce = document.getElementById('nonce').value
+
+    const nonce = await findNonce(miner, 0, '90acd06de40e2fe260e04b81d0afd4fd0017ecabc0c3e1c44b3750d408bc7165')
+    console.log('Found nonce!', nonce)
+
+    document.getElementById('response').innerHTML = 'Mining finished!<br>Confirm transaction with your wallet'
 
     try {
       const result = await wax.api.transact({

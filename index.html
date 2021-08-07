@@ -131,8 +131,8 @@ async function mine() {
             blocksBehind: 3,
             expireSeconds: 60
         })
-        traces = result.action_traces.inline_traces
-        document.getElementById('response').innerHTML = JSON.stringify(traces[traces.length - 1].act.data.bounty)
+        traces = result['action_traces']['inline_traces']
+        document.getElementById('response').innerHTML = JSON.stringify(traces[traces.length - 1]['act']['data']['bounty'])
     }
     catch (e) {
         document.getElementById('response').innerHTML = e.message
